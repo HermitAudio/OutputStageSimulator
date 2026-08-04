@@ -23,6 +23,18 @@ public class TraubSolverTests
     }
 
     [Test]
+    public void TraubIteration_ThrowsInsteadOfLoopingForever_WhenNoRootExists()
+    {
+        // sin(x) never reaches 2, so this has no real root — a genuinely
+        // non-convergent case, independent of any precision/stiffness issue.
+        var x = 1.0;
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            TraubSolver.TraubIteration((val, z) => Math.Sin(val) - z, 1e-9, 2.0, ref x, maxIterations: 20));
+
+        Assert.That(ex!.Message, Does.Contain("did not converge"));
+    }
+
+    [Test]
     public void Traub_OnIdentityEquation_RecoversOriginalSamples()
     {
         var samples = new Complex[FftProcessor.MaxElement + 1];
