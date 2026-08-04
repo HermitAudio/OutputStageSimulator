@@ -104,6 +104,14 @@
     border: 1px solid #cbd5e1;
 }
 
+.column fieldset select {
+    width: 12rem;
+    padding: 0.2rem 0.4rem;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    background: white;
+}
+
 .hfe-chart-card-mini {
     flex: 1;
     min-width: 20rem;
@@ -296,7 +304,8 @@ table.harmonics tbody tr:nth-child(even) {
     .column fieldset.accent-hfe { background: #211a3d; }
     .column fieldset.accent-signal { background: #0c2233; }
 
-    .column fieldset input {
+    .column fieldset input,
+    .column fieldset select {
         background: #0f172a;
         color: #e2e8f0;
         border-color: #475569;

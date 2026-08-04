@@ -8,11 +8,15 @@
 .back-link {
     background: #4f46e5;
     color: white;
+    border: none;
     padding: 0.4rem 0.9rem;
     border-radius: 8px;
     text-decoration: none;
+    font-family: inherit;
+    font-size: 1rem;
     font-weight: 600;
     white-space: nowrap;
+    cursor: pointer;
 }
 
 .back-link:hover {
@@ -81,6 +85,14 @@ fieldset.accent-hfe input {
     border: 1px solid #cbd5e1;
 }
 
+fieldset.accent-hfe select {
+    width: 12rem;
+    padding: 0.2rem 0.4rem;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    background: white;
+}
+
 .button-row {
     display: flex;
     align-items: center;
@@ -147,7 +159,8 @@ fieldset.accent-hfe input {
         background: #211a3d;
     }
 
-    fieldset.accent-hfe input {
+    fieldset.accent-hfe input,
+    fieldset.accent-hfe select {
         background: #0f172a;
         color: #e2e8f0;
         border-color: #475569;

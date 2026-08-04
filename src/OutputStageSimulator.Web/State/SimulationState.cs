@@ -33,21 +33,29 @@ public sealed class SimulationState
     public double DI { get; set; }
     public double Iturnover { get; set; }
     public double PeakOutputVoltage { get; set; }
+    public HfeCurveKind HfeCurveKind { get; set; } = HfeCurveKind.Piecewise;
 
     public AnalysisResult? Result { get; private set; }
     public string? Error { get; private set; }
 
-    /// <summary>Applies a thesis preset's exact parameters (circuit + hfe model) and recalculates.</summary>
+    /// <summary>
+    /// Applies a thesis preset's parameters (circuit + hfe model) and
+    /// recalculates. Uses <see cref="ThesisPresets.AllUpdated"/> — the
+    /// circuit values are still thesis-exact, but the hfe model parameters
+    /// are calibrated against the real datasheet curve rather than the
+    /// thesis's own numbers (see <see cref="ThesisPresets.All"/> for those,
+    /// which is what the regression tests check against instead).
+    /// </summary>
     public void LoadPreset(int index)
     {
         SelectedPresetIndex = index;
-        if (index < 0 || index >= ThesisPresets.All.Count)
+        if (index < 0 || index >= ThesisPresets.AllUpdated.Count)
         {
             Run();
             return;
         }
 
-        var preset = ThesisPresets.All[index];
+        var preset = ThesisPresets.AllUpdated[index];
         Title = preset.Title;
         Rg = preset.Rg;
         Rl = preset.Rl;
@@ -113,6 +121,7 @@ public sealed class SimulationState
                 AFactor = AFactor,
                 DI = DI,
                 Iturnover = Iturnover,
+                CurveKind = HfeCurveKind,
             };
             hfe.RecomputeTurnoverGain();
 
@@ -137,7 +146,7 @@ public sealed class SimulationState
 
     public HfeModel CreateHfeModel()
     {
-        var model = new HfeModel { Hfemax = Hfemax, Imax = Imax, AFactor = AFactor, DI = DI, Iturnover = Iturnover };
+        var model = new HfeModel { Hfemax = Hfemax, Imax = Imax, AFactor = AFactor, DI = DI, Iturnover = Iturnover, CurveKind = HfeCurveKind };
         model.RecomputeTurnoverGain();
         return model;
     }

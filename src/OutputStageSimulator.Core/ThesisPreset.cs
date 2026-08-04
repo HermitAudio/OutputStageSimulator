@@ -60,6 +60,12 @@ public static class ThesisPresets
 {
     public const int KnownFigureCount = 11;
 
+    /// <summary>
+    /// Thesis-exact parameters (including the original hfe model values) —
+    /// used by the regression tests and the console harness to keep checking
+    /// against the thesis's own published figures. The console app and web UI
+    /// use <see cref="AllUpdated"/> instead.
+    /// </summary>
     public static readonly IReadOnlyList<ThesisPreset> All = new[]
     {
         new ThesisPreset(
@@ -98,4 +104,45 @@ public static class ThesisPresets
             ExpectedGrunntone: 14.37, ExpectedThd: 2.7039,
             ExpectedDb2nd: -154.55, ExpectedDb3rd: -31.37, ExpectedDb4th: -160.77, ExpectedDb5th: -56.99),
     };
+
+    /// <summary>
+    /// Same circuit configurations as <see cref="All"/> (Rg/Rl/Iq/Offset/AntPar/
+    /// PeakOutputVoltage are still thesis-exact), but with the hfe model
+    /// parameters recalibrated against the real BD203/204 datasheet curve
+    /// (see the hFE overlay chart) instead of the thesis's own values. This is
+    /// what the console app and web UI use going forward; <see cref="All"/>
+    /// stays untouched — and without Expected* values here, since this
+    /// calibration is deliberately not the thesis's own numbers — so the
+    /// regression tests keep checking against the thesis's actual figures.
+    /// </summary>
+    public static readonly IReadOnlyList<ThesisPreset> AllUpdated =
+    [
+        new(
+            Title: "Fig. 5.14.1 - Stromstyrt kl.AB",
+            Description: "BD203/204, current-driven, class AB (Iq=0.8A)",
+            Rg: 300000.0, Rl: 4.0, Iq: 0.8, Offset: 1.0, AntPar: 1,
+            Hfemax: 7500, Imax: 1.25, AFactor: 0.35000, DI: 950, Iturnover: 2.00,
+            PeakOutputVoltage: 14.0),
+
+        new(
+            Title: "Fig. 5.14.4 - Stromstyrt kl.B",
+            Description: "BD203/204, current-driven, class B (Iq=0)",
+            Rg: 300000.0, Rl: 4.0, Iq: 0.0, Offset: 1.0, AntPar: 1,
+            Hfemax: 7500, Imax: 1.25, AFactor: 0.35000, DI: 950, Iturnover: 2.00,
+            PeakOutputVoltage: 14.0),
+
+        new(
+            Title: "Fig. 5.14.5 - Spenningsstyrt kl.B",
+            Description: "BD203/204, voltage-driven, class B (Iq=0)",
+            Rg: 3000.0, Rl: 4.0, Iq: 0.0, Offset: 1.0, AntPar: 1,
+            Hfemax: 7500, Imax: 1.25, AFactor: 0.35000, DI: 950, Iturnover: 2.00,
+            PeakOutputVoltage: 14.0),
+
+        new(
+            Title: "Fig. 5.14.6 - Stromstyrt kl.A",
+            Description: "BD203/204, current-driven, class A (Iq=4.0A)",
+            Rg: 300000.0, Rl: 4.0, Iq: 4.0, Offset: 1.0, AntPar: 1,
+            Hfemax: 7500, Imax: 1.25, AFactor: 0.35000, DI: 950, Iturnover: 2.00,
+            PeakOutputVoltage: 14.0),
+    ];
 }

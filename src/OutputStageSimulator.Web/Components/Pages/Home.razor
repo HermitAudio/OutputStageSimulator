@@ -38,16 +38,23 @@
                 <span>Thesis preset</span>
                 <select @bind="State.SelectedPresetIndex" @bind:after="OnPresetChanged">
                     <option value="-1">— Custom (manual entry) —</option>
-                    @for (var i = 0; i < ThesisPresets.All.Count; i++)
+                    @for (var i = 0; i < ThesisPresets.AllUpdated.Count; i++)
                     {
-                        var preset = ThesisPresets.All[i];
+                        var preset = ThesisPresets.AllUpdated[i];
                         <option value="@i">@preset.Title (@preset.Description)</option>
                     }
                 </select>
             </label>
             <fieldset class="accent-signal">
-                <legend>Test signal</legend>
+                <legend>Test signal and model</legend>
                 <label>Peak output voltage (V) <input type="number" step="any" @bind="State.PeakOutputVoltage" @bind:after="OnFieldChanged" /></label>
+                <label>
+                    Hfe curve model
+                    <select @bind="State.HfeCurveKind" @bind:after="OnFieldChanged">
+                        <option value="@HfeCurveKind.Piecewise">Piecewise (original, has a kink)</option>
+                        <option value="@HfeCurveKind.SmoothBlend">Smooth blend (no kink)</option>
+                    </select>
+                </label>
             </fieldset>
         </div>
 
@@ -189,6 +196,28 @@
 
     private sealed record XyPoint(double X, double Y);
 
+    /// <summary>
+    /// Log-spaced background points across the full range, plus a denser
+    /// linearly-spaced cluster around Iturnover — otherwise the transition
+    /// region (where the curve actually bends) only gets a handful of the
+    /// log-spaced points, and Chart.js's spline interpolation can make an
+    /// honestly-smooth curve look kinked when sampled that sparsely.
+    /// </summary>
+    private static IEnumerable<double> HfeSamplePoints(double from, double to, int backgroundCount, double iturnover, int denseCount = 40)
+    {
+        var points = LogSpace(from, to, backgroundCount).ToList();
+
+        var lo = Math.Max(from, iturnover * 0.4);
+        var hi = Math.Min(to, iturnover * 2.5);
+        for (var k = 0; k < denseCount; k++)
+        {
+            var t = k / (double)(denseCount - 1);
+            points.Add(lo + t * (hi - lo));
+        }
+
+        return points.Distinct().OrderBy(x => x);
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         // Static prerendering has no live JS runtime; only the interactive
@@ -215,7 +244,7 @@
                 .ToArray();
 
             var hfeModel = State.CreateHfeModel();
-            var calculatedCurve = LogSpace(0.01, 10, 60)
+            var calculatedCurve = HfeSamplePoints(0.01, 10, 60, State.Iturnover)
                 .Select(ic => new XyPoint(ic, Math.Max(0, hfeModel.Hfe(ic))))
                 .ToArray();
 

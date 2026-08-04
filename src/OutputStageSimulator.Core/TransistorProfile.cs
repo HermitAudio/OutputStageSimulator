@@ -37,13 +37,13 @@ public static class TransistorProfiles
     public static readonly TransistorProfile Bd203204 = new(
         Name: "BD203/204",
         Description: "Single-device hFE (VCE=2V, Tj=25C), Philips 1972 databook",
-        ReferenceHfeCurve: new (double Ic, double Hfe)[]
-        {
+        ReferenceHfeCurve:
+        [
             (0.01, 22), (0.015, 27), (0.02, 30), (0.03, 35), (0.05, 40),
             (0.07, 44), (0.10, 47), (0.15, 52), (0.20, 55), (0.30, 60),
             (0.50, 67), (0.70, 72), (1.00, 76), (1.50, 76), (2.00, 73),
-            (3.00, 65), (4.00, 55), (5.00, 45), (6.00, 35), (7.00, 27), (8.00, 20),
-        });
+            (3.00, 65), (4.00, 55), (5.00, 45), (6.00, 35), (7.00, 27), (8.00, 20)
+        ]);
 
-    public static readonly IReadOnlyList<TransistorProfile> All = new[] { Bd203204 };
+    public static readonly IReadOnlyList<TransistorProfile> All = [Bd203204];
 }

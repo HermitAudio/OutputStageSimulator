@@ -4,11 +4,12 @@
 @using OutputStageSimulator.Web.State
 @inject IJSRuntime JS
 @inject SimulationState State
+@inject NavigationManager Nav
 
 <PageTitle>hFE Model - Output Stage Analysis</PageTitle>
 
 <div class="hero-mini">
-    <a href="/" class="back-link">← Back</a>
+    <button type="button" class="back-link" @onclick="GoHome">← Back</button>
     <h1>hFE vs Ic — @TransistorProfiles.All[State.SelectedTransistorIndex].Name</h1>
 </div>
 
@@ -21,6 +22,13 @@
 <div class="card">
     <fieldset class="accent-hfe">
         <legend>Transistor hfe model</legend>
+        <label>
+            Hfe curve model
+            <select @bind="State.HfeCurveKind" @bind:after="OnFieldChanged">
+                <option value="@HfeCurveKind.Piecewise">Piecewise (original, has a kink)</option>
+                <option value="@HfeCurveKind.SmoothBlend">Smooth blend (no kink)</option>
+            </select>
+        </label>
         <label>Hfe max <input type="number" step="any" @bind="State.Hfemax" @bind:after="OnFieldChanged" /></label>
         <label>I at Hfe max, Imax (A) <input type="number" step="any" @bind="State.Imax" @bind:after="OnFieldChanged" /></label>
         <label>a-factor <input type="number" step="any" @bind="State.AFactor" @bind:after="OnFieldChanged" /></label>
@@ -62,6 +70,8 @@
         _savedMessage = "Saved.";
     }
 
+    private void GoHome() => Nav.NavigateTo("/");
+
     private static IEnumerable<double> LogSpace(double from, double to, int count)
     {
         var logFrom = Math.Log10(from);
@@ -74,6 +84,28 @@
     }
 
     private sealed record XyPoint(double X, double Y);
+
+    /// <summary>
+    /// Log-spaced background points across the full range, plus a denser
+    /// linearly-spaced cluster around Iturnover — otherwise the transition
+    /// region (where the curve actually bends) only gets a handful of the
+    /// log-spaced points, and Chart.js's spline interpolation can make an
+    /// honestly-smooth curve look kinked when sampled that sparsely.
+    /// </summary>
+    private static IEnumerable<double> HfeSamplePoints(double from, double to, int backgroundCount, double iturnover, int denseCount = 60)
+    {
+        var points = LogSpace(from, to, backgroundCount).ToList();
+
+        var lo = Math.Max(from, iturnover * 0.4);
+        var hi = Math.Min(to, iturnover * 2.5);
+        for (var k = 0; k < denseCount; k++)
+        {
+            var t = k / (double)(denseCount - 1);
+            points.Add(lo + t * (hi - lo));
+        }
+
+        return points.Distinct().OrderBy(x => x);
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -90,7 +122,7 @@
             .ToArray();
 
         var hfeModel = State.CreateHfeModel();
-        var calculatedCurve = LogSpace(0.01, 10, 80)
+        var calculatedCurve = HfeSamplePoints(0.01, 10, 80, State.Iturnover)
             .Select(ic => new XyPoint(ic, Math.Max(0, hfeModel.Hfe(ic))))
             .ToArray();
 
