@@ -1,4 +1,5 @@
 using OutputStageSimulator.Core;
+using System.Numerics;
 
 namespace OutputStageSimulator.Core.Tests;
 
@@ -35,7 +36,7 @@ public class TraubSolverTests
 
         for (var i = 1; i <= FftProcessor.MaxElement; i++)
         {
-            Assert.That(samples[i].Re, Is.EqualTo(i * 0.1).Within(1e-6), $"sample {i}");
+            Assert.That(samples[i].Real, Is.EqualTo(i * 0.1).Within(1e-6), $"sample {i}");
         }
     }
 }

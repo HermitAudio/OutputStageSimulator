@@ -1,4 +1,5 @@
 using OutputStageSimulator.Core;
+using System.Numerics;
 
 namespace OutputStageSimulator.Core.Tests;
 
@@ -18,10 +19,10 @@ public class FftProcessorTests
         FftProcessor.Fft(samples, FftProcessor.MaxElement);
 
         // DC bin has no mirror partner, so it scales by N rather than N/2.
-        Assert.That(Complex.Mag(samples[1]) / FftProcessor.MaxElement, Is.EqualTo(dc).Within(1e-9));
+        Assert.That(Complex.Abs(samples[1]) / FftProcessor.MaxElement, Is.EqualTo(dc).Within(1e-9));
         for (var i = 2; i <= FftProcessor.MaxElement; i++)
         {
-            Assert.That(Complex.Mag(samples[i]), Is.LessThan(1e-9), $"bin {i} should be ~0 for a DC signal");
+            Assert.That(Complex.Abs(samples[i]), Is.LessThan(1e-9), $"bin {i} should be ~0 for a DC signal");
         }
     }
 
@@ -38,16 +39,16 @@ public class FftProcessorTests
         FftProcessor.Fft(samples, FftProcessor.MaxElement);
 
         // Bin 2 is the fundamental (one cycle per 256-sample block); normalize by N/2.
-        var fundamentalMag = Complex.Mag(samples[2]) / 128.0;
+        var fundamentalMag = Complex.Abs(samples[2]) / 128.0;
         Assert.That(fundamentalMag, Is.EqualTo(amplitude).Within(1e-6));
 
         // Threshold relaxed vs. exact zero: the source's truncated `pi = 3.1415927`
         // constant means sin(2*pi) isn't exactly 0, leaking a tiny residual into
         // neighboring bins (observed ~1e-6, vs. a raw bin scale of amplitude*N/2=640).
-        Assert.That(Complex.Mag(samples[1]), Is.LessThan(1e-3), "DC bin should be ~0 for a pure sine");
+        Assert.That(Complex.Abs(samples[1]), Is.LessThan(1e-3), "DC bin should be ~0 for a pure sine");
         for (var i = 3; i <= FftProcessor.MaxElement / 2; i++)
         {
-            Assert.That(Complex.Mag(samples[i]) / 128.0, Is.LessThan(1e-6), $"bin {i} should be ~0 for a pure fundamental sine");
+            Assert.That(Complex.Abs(samples[i]) / 128.0, Is.LessThan(1e-6), $"bin {i} should be ~0 for a pure fundamental sine");
         }
     }
 
@@ -64,10 +65,10 @@ public class FftProcessorTests
 
         FftProcessor.Fft(samples, FftProcessor.MaxElement);
 
-        var secondHarmonicMag = Complex.Mag(samples[3]) / 128.0;
+        var secondHarmonicMag = Complex.Abs(samples[3]) / 128.0;
         Assert.That(secondHarmonicMag, Is.EqualTo(amplitude).Within(1e-6));
 
         // See note in the fundamental-sine test above re: truncated-pi leakage.
-        Assert.That(Complex.Mag(samples[2]), Is.LessThan(1e-3), "fundamental bin should be ~0");
+        Assert.That(Complex.Abs(samples[2]), Is.LessThan(1e-3), "fundamental bin should be ~0");
     }
 }

@@ -91,11 +91,11 @@ public class OutputStagePipelineTests
         var samples = pipeline.BuildTestTone(20.0);
 
         // Peak occurs at i=64 (sin(pi/2)=1) in this program's sample indexing.
-        var expectedPeak = samples[64].Re;
+        var expectedPeak = samples[64].Real;
         for (var i = 1; i <= FftProcessor.MaxElement; i++)
         {
-            Assert.That(samples[i].Re, Is.LessThanOrEqualTo(expectedPeak + 1e-9));
-            Assert.That(samples[i].Im, Is.EqualTo(0.0));
+            Assert.That(samples[i].Real, Is.LessThanOrEqualTo(expectedPeak + 1e-9));
+            Assert.That(samples[i].Imaginary, Is.EqualTo(0.0));
         }
     }
 }

@@ -1,3 +1,5 @@
+using System.Numerics;
+
 namespace OutputStageSimulator.Core;
 
 /// <summary>
@@ -56,10 +58,10 @@ public static class FftProcessor
                 if (!ok)
                 {
                     var twiddle = new Complex(Math.Cos(e), Math.Sin(e));
-                    var help = Complex.Mul(twiddle, main[k]);
+                    var help = twiddle * main[k];
                     var help2 = main[i];
-                    main[i] = Complex.Add(help2, help);
-                    main[k] = Complex.Sub(help2, help);
+                    main[i] = help2 + help;
+                    main[k] = help2 - help;
                     i++;
                     ok = i > j * powerOfTwo[MaxNumber - h];
                     if (ok)

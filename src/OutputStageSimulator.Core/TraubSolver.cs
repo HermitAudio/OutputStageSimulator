@@ -1,3 +1,5 @@
+using System.Numerics;
+
 namespace OutputStageSimulator.Core;
 
 /// <summary>
@@ -50,17 +52,17 @@ public static class TraubSolver
     /// <summary>
     /// Solves g(x, z)=0 for every sample in <paramref name="main"/>, using each
     /// solution as the initial guess for the next (Pascal: Traub). Overwrites
-    /// each element's Re (originally the generator current z) with the solved
-    /// output voltage x.
+    /// each element's Real (originally the generator current z) with the
+    /// solved output voltage x.
     /// </summary>
     public static void Traub(GFunction g, double errorLimit, Complex[] main)
     {
-        var output = main[1].Re * 1000;
+        var output = main[1].Real * 1000;
         for (var i = 1; i <= FftProcessor.MaxElement; i++)
         {
-            var z = main[i].Re;
+            var z = main[i].Real;
             TraubIteration(g, errorLimit, z, ref output);
-            main[i] = new Complex(output, main[i].Im);
+            main[i] = new Complex(output, main[i].Imaginary);
         }
     }
 }

@@ -1,4 +1,5 @@
 using OutputStageSimulator.Core;
+using System.Numerics;
 
 namespace OutputStageSimulator.Core.Tests;
 
@@ -68,9 +69,9 @@ public class SquareTriangleWaveFftTests
         return samples;
     }
 
-    private static double NormalizedMagnitude(Complex[] samples, int bin) => Complex.Mag(samples[bin]) / (N / 2.0);
+    private static double NormalizedMagnitude(Complex[] samples, int bin) => Complex.Abs(samples[bin]) / (N / 2.0);
 
-    private static double PhaseDeg(Complex[] samples, int bin) => Complex.Phase(samples[bin]) * (180.0 / Math.PI);
+    private static double PhaseDeg(Complex[] samples, int bin) => samples[bin].Phase * (180.0 / Math.PI);
 
     /// <summary>Signed phase difference in (-180, 180], independent of absolute phase convention.</summary>
     private static double WrappedPhaseDifferenceDeg(double aDeg, double bDeg)

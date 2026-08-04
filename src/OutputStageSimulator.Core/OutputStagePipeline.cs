@@ -1,3 +1,5 @@
+using System.Numerics;
+
 namespace OutputStageSimulator.Core;
 
 /// <summary>
@@ -125,21 +127,21 @@ public sealed class OutputStagePipeline
         FftProcessor.Fft(samples, FftProcessor.MaxElement);
         Normalize(samples);
 
-        var fundamental = Complex.Mag(samples[2]);
+        var fundamental = Complex.Abs(samples[2]);
 
         var harmonics = new List<HarmonicEntry>(20);
         for (var i = 1; i <= 20; i++)
         {
-            var magnitude = Complex.Mag(samples[i]);
+            var magnitude = Complex.Abs(samples[i]);
             var db = 20 * Math.Log(magnitude / fundamental) / Math.Log(10);
-            var phaseDeg = Complex.Phase(samples[i]) * (180.0 / Math.PI);
+            var phaseDeg = samples[i].Phase * (180.0 / Math.PI);
             harmonics.Add(new HarmonicEntry(i - 1, magnitude, db, phaseDeg));
         }
 
         var thdAccumulator = 0.0;
         for (var i = 3; i <= FftProcessor.MaxElement / 2; i++)
         {
-            thdAccumulator += Sqr(Complex.Mag(samples[i]));
+            thdAccumulator += Sqr(Complex.Abs(samples[i]));
         }
 
         var thd = Math.Sqrt(thdAccumulator) / fundamental * 100;
@@ -148,8 +150,8 @@ public sealed class OutputStagePipeline
         var spectrumPhaseDeg = new double[FftProcessor.MaxElement / 2];
         for (var i = 1; i <= FftProcessor.MaxElement / 2; i++)
         {
-            spectrumDb[i - 1] = 20 * Math.Log(Complex.Mag(samples[i]) / fundamental) / Math.Log(10);
-            spectrumPhaseDeg[i - 1] = Complex.Phase(samples[i]) * (180.0 / Math.PI);
+            spectrumDb[i - 1] = 20 * Math.Log(Complex.Abs(samples[i]) / fundamental) / Math.Log(10);
+            spectrumPhaseDeg[i - 1] = samples[i].Phase * (180.0 / Math.PI);
         }
 
         return new AnalysisResult
@@ -166,7 +168,7 @@ public sealed class OutputStagePipeline
     {
         for (var i = 1; i <= FftProcessor.MaxElement; i++)
         {
-            samples[i] = new Complex(samples[i].Re / 128, samples[i].Im / 128);
+            samples[i] = new Complex(samples[i].Real / 128, samples[i].Imaginary / 128);
         }
     }
 
