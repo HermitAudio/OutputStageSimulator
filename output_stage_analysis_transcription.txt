@@ -1,0 +1,728 @@
+TRANSCRIPTION OF OUTPUT-STAGE ANALYSIS PROGRAM
+==============================================
+
+Source: photographed thesis printout, pages 114-130 and continuation.
+
+Conventions used in this transcription:
+- The text is kept as close to the printed UCSD Pascal source as possible.
+- The UCSD Pascal array-index delimiters printed as special characters are
+  represented as [ and ]. For example, main[i].
+- Text lost at the right edge of the original printout is marked:
+      { RIGHT EDGE MISSING }
+- Text restored from clear context is marked:
+      { RECONSTRUCTED }
+- No attempt has been made to modernize the Pascal.
+
+
+{ ========================================================================== }
+{ Page 114                                                                  }
+{ D.1. Modul med rutiner for komplekse tall                                }
+{ ========================================================================== }
+
+module complexmath;
+export
+    type
+        complex = record
+            re: real;
+            im: real;
+        end;
+
+    const
+        zero = complex [re:0.0, im:0.0];
+
+    function equal (a,b: complex): boolean;
+    function add   (a,b: complex): complex;
+    function sub   (a,b: complex): complex;
+    function mul   (a,b: complex): complex;
+    function dvd   (a,b: complex): complex;
+    function conj  (a: complex): complex;
+    function mag   (a: complex): real;
+    function scmul (scale:real; a:complex): complex;
+    function polar_to_rect(mag,phase:real):complex;
+
+implement
+
+function equal (a,b: complex): boolean;
+begin
+    equal := (a.re=b.re) and (a.im=b.im)
+end;
+
+function add (a,b: complex): complex;
+begin
+    add.re := a.re+b.re;
+    add.im := a.im+b.im
+end;
+
+
+{ ========================================================================== }
+{ Page 115                                                                  }
+{ ========================================================================== }
+
+function sub (a,b: complex): complex;
+begin
+    sub.re := a.re-b.re;
+    sub.im := a.im-b.im
+end;
+
+function mul (a,b: complex): complex;
+begin
+    mul.re := (a.re*b.re-a.im*b.im);
+    mul.im := (a.re*b.im+a.im*b.re);
+end;
+
+function dvd (a,b: complex): complex;
+var denom: real;
+begin
+    denom := sqr(b.re)+sqr(b.im);
+    if denom = 0.0 then halt(-5);  (* divide by zero *)
+    dvd.re := (b.re*a.re + b.im*a.im) / denom; { RECONSTRUCTED: standard complex division }
+    dvd.im := (b.re*a.im - b.im*a.re) / denom;
+end;
+
+function conj (a: complex): complex;
+begin
+    conj.re := a.re;
+    conj.im := -a.im
+end;
+
+function mag (a:complex): real;
+begin
+    mag := sqrt(sqr(a.re)+sqr(a.im))
+end;
+
+function scmul (scale:real; a:complex): complex;
+begin
+    scmul.re := scale*a.re;
+    scmul.im := scale*a.im
+end;
+
+
+{ ========================================================================== }
+{ Page 116                                                                  }
+{ ========================================================================== }
+
+function polar_to_rect(mag,phase:real):complex;
+begin
+    polar_to_rect.re := mag*cos(phase);
+    polar_to_rect.im := mag*sin(phase);
+end;
+
+end.  (* complexmath *)
+
+
+{ -------------------------------------------------------------------------- }
+{ D.2. Modul med FFT-subrutine                                               }
+{ -------------------------------------------------------------------------- }
+
+$UCSD$
+module fft_subroutine;
+$SEARCH 'CXMODULE'$
+import complexmath;
+
+export
+    const
+        Max_number = 8;
+        Max_element = 256;
+        pi = 3.1415927;
+
+    type
+        shortint = 0..Max_element;
+        tabell = array[1..Max_element] of complex;
+
+    procedure fft(var main:tabell; N:integer);
+
+
+{ ========================================================================== }
+{ Page 117                                                                  }
+{ ========================================================================== }
+
+implement
+
+FUNCTION IBR(x,m:integer):integer;
+(*
+(* Foretar en bit-reversering av ett tall x med m antall bit's *)
+(* Resultatet går til IBR                                      *)
+(*                                                            *)
+var i,old,ny : integer;
+begin
+    ny:=0;
+    for i:=1 to m do begin
+        old := x;
+        x := x div 2;
+        ny:= 2*(ny-x) + old;
+    end;
+    IBR := ny;
+end;
+
+procedure fft(var main:tabell; N:integer);
+var h,K,J,I,z : integer;
+    ok : boolean;
+    E : real;
+    help,help2:complex;
+    power_of_two : array[0..max_number] of integer;
+    bit_reversed : array[0..max_element] of integer;
+    part_of_angle : array[1..max_number] of real;
+
+procedure init_arrays;
+(*
+(* En del beregninger som foretas ofte, så som eksponentene      *)
+(* til 2, legges i tabell. Det samme gjelder de bit-reverserte    *)
+(* til alle tallene, og alle vinkel-delene.                       *)
+(*                                                               *)
+var i:integer;
+begin
+    power_of_two[0]:=1;
+
+
+{ ========================================================================== }
+{ Page 118                                                                  }
+{ ========================================================================== }
+
+    for i:=1 to max_number do begin
+        power_of_two[i]:=2*power_of_two[i-1];
+        part_of_angle[i]:=2*pi/power_of_two[i];
+    end;
+
+    for i:=0 to max_element do begin
+        bit_reversed[i]:=IBR(i,max_number);
+    end;
+end;
+
+procedure unscramble(var main:tabell; N:integer);
+(*
+(* Utgangs-array'et er i "vill" orden etter fft-rutinen          *)
+(* Denne 'unscrambling's-rutinen setter elementene tilbake        *)
+(* på riktig plass.                                               *)
+(*                                                               *)
+begin
+    I:=1;
+    J:=1;
+    repeat
+        if not (I>=J) then begin
+            help:=main[I];
+            main[I]:=main[J];
+            main[J]:=help;
+        end;
+        K := power_of_two[Max_number-1];
+        ok:=(K>=J);
+        while not ok do begin
+            J:=J-K;
+            K:=K div 2;
+            ok:=(K>=J);
+        end;
+        J:=J+K;
+        I:=I+1;
+        ok:=(I>=N);
+    until ok;
+end;
+
+
+{ ========================================================================== }
+{ Page 119                                                                  }
+{ ========================================================================== }
+
+begin
+    writeln(#12);
+    gotoxy(10,10);
+    writeln('FFT ANALYSE');
+    init_arrays;
+    for h := 1 to Max_number do begin
+        E := 0;
+        J := 1;
+        I := J;
+        repeat
+            K := I + power_of_two[Max_number-h];
+            ok := (K>N);
+            if not ok then begin
+                with help2 do begin
+                    re:=cos(E);
+                    im:=sin(E);
+                end;
+                help := mul(help2,main[K]);
+                help2:=main[I];
+                main[I] := add(help2,help);
+                main[K] := sub(help2,help);
+                I := succ(I);
+                ok := (I > J*power_of_two[Max_number-h]);
+                if ok then begin
+                    J := J + 2;
+                    ok := (J > power_of_two[h]);
+                    if not ok then begin
+                        I := I + power_of_two[Max_number-h];
+                        z := bit_reversed[I-1];
+                        E := part_of_angle[h]*z;
+                    end;
+                end;
+            end;
+        until ok;
+    end;       (* For h := 1 to Max_number *)
+    unscramble(main,N);
+end;
+
+end.
+
+
+{ ========================================================================== }
+{ Page 120                                                                  }
+{ D.3. Modul for iterativ løsning av et ligningssett                         }
+{ ========================================================================== }
+
+$UCSD$
+module Traub_metode;
+$search 'CXMODULE','fft_sub'$
+import complexmath,fft_subroutine;
+export
+
+procedure Traub(function g(x,z:real):real; error_limit:real; var main:tabell);
+procedure traub_iteration(function g(x,z:real):real; error_limit:real;
+                          var input,for_x:real);
+
+implement
+
+procedure traub_iteration(function g(x,z:real):real; error_limit:real;
+                          var input,for_x:real);
+var help,E,nå_x,for_y,nå_y,deriv,zett,fzett : real;
+begin
+    nå_y := g(for_x,input);
+    nå_x := for_x*(1.1);
+    repeat
+        for_y := nå_y;
+        nå_y := g(nå_x,input);
+        deriv := (nå_y - for_y)/(nå_x - for_x);
+        zett := nå_x - (nå_y/deriv);
+        fzett := g(zett,input);
+        for_x := nå_x;
+        help := 2*fzett-nå_y;
+        if help=0 then nå_x := zett else
+            nå_x := for_x - (for_x-zett)*((fzett-nå_y)/(help));
+        if nå_x<>0 then
+            E := 1 - (for_x/nå_x)
+        else
+            if for_x=0 then E:=0 else E:=1;
+    until abs(E) < error_limit;
+
+
+{ ========================================================================== }
+{ Page 121                                                                  }
+{ ========================================================================== }
+
+    for_x := nå_x;
+end;
+
+procedure Traub(function g(x,z:real):real; error_limit:real; var main:tabell);
+var i:integer;
+    output : real;
+begin
+    gotoxy(1,10);
+    write('TRAUB ITERASJON IGANG');
+    output:= main[1].re*1000;
+    for i := 1 to 256 do begin       (* Ta hele tabellen *)
+        traub_iteration(g,error_limit,main[i].re,output);
+        main[i].re := output;
+    end;
+end;
+
+END.
+
+
+{ -------------------------------------------------------------------------- }
+{ D.4. Modul for tegning av spekteret                                        }
+{ -------------------------------------------------------------------------- }
+
+module tegn_graf;
+$search '#3:LIBRARY.','CXMODULE','fft_sub'$
+(* LIBRARY inneholder dgl_lib, en modul med en rekke *)
+(* grafiske rutiner.                                  *)
+
+import dgl_lib,complexmath,fft_subroutine;
+
+export
+    procedure graf(var main:tabell;N:integer);
+    procedure init_graf;
+
+implement
+
+
+{ ========================================================================== }
+{ Page 122                                                                  }
+{ ========================================================================== }
+
+procedure home;        (* Flytter cursor til nedre venstre hjørne *)
+begin
+    move(0,-140);
+end;
+
+procedure init_graf;   (* Initierer det grafiske systemet *)
+var control,error_return:integer;
+begin
+    graphics_init;
+    display_init(3,control,error_return);
+    set_aspect(140,140);
+    set_window(-10,130,-150,0);
+    set_char_size(2,4);
+end;
+
+procedure convert_to_db(var main:tabell;N:integer);
+var i:integer; first : real; ln10 : real;
+
+function dB(a:real):real;
+begin
+    dB := 20*ln(a)/ln10;
+end;
+
+begin
+    ln10 := ln(10);
+    first := mag(main[2]);
+    for i:=1 to (N div 2) do main[i].re := dB(mag(main[i])/first);
+end;
+
+procedure draw_axes;
+var val,i:integer; s : string[40]; cnt : integer;
+begin
+    home; line(130,-140); home; line(0,0);  (* Tegn Akser *)
+    for i:=0 to 7 do begin                 (* Markører og tekst vertikalt *)
+        s := '';
+        val := -i*20;
+        move(0,val);
+        line(-5,val);
+        move(-10,val-4);
+
+
+{ ========================================================================== }
+{ Page 123                                                                  }
+{ ========================================================================== }
+
+        strwrite(s,1,cnt,val:4);
+        gtext(s);
+    end;
+    for i:=0 to 12 do begin              (* Markører og tekst horisontalt *)
+        s:='';
+        val := i*10;
+        move(val,-140);
+        line(val,-145);
+        strwrite(s,1,cnt,val:3);
+        gtext(s);
+    end;
+    move(-10,-150);
+    gtext('dB / N');
+    move(30,-10);
+    set_char_size(2.5,5);
+    gtext('Amplitude [dB] versus frekvens [N * gr.t]');
+    set_char_size(2,4);
+    home;
+end;
+
+procedure graf(var main:tabell;N:integer);
+var i : integer;
+begin
+    convert_to_db(main,N);
+    clear_display;
+    draw_axes;
+    for i:=1 to (N div 2) do begin
+        move(i,-140);
+        if main[i].re > -140 then line(i,main[i].re);
+    end;
+end;
+
+end.
+
+
+{ ========================================================================== }
+{ Page 124                                                                  }
+{ D.5. Hovedprogrammet                                                      }
+{ ========================================================================== }
+
+$UCSD$
+program main_routine(input,output,keyboard,listing);
+$SEARCH 'CXMODULE','fft_sub','traub','tegn_graf','#3:LIBRARY.'$
+import complexmath,fft_subroutine,Traub_metode,tegn_graf,dgl_lib;
+
+type
+    streng = string[80];
+
+var
+    listing,keyboard : text;
+    main : tabell;
+    i,N,antpar : integer;
+    filnavn : string[20];
+    innfil : file of tabell;
+    grunntone,itopp,Rl,Iq,Rg,magnitude : real;
+    thd,offset,Iturnover,Hfe_at_turnover,Hfemax,Imax,a_factor,dI : real;
+    ln10 : real;
+    svar : char;
+    navn : string[255];
+
+function upc(a:char):char;
+(* Konverterer små bokstaver til store bokstaver *)
+begin
+    if (ord(a)>96) and (ord(a)<128) then upc:=chr(ord(a)-32) else upc:=a; { RECONSTRUCTED ending }
+end;
+
+procedure normalize;
+(* Amplituden normaliserer samplene *)
+var i:integer;
+begin
+    for i := 1 to 256 do begin
+        with main[i] do begin
+            re := re/128;
+            im := im/128;
+        end;
+
+
+{ ========================================================================== }
+{ Page 125                                                                  }
+{ ========================================================================== }
+
+    end;
+end;
+
+procedure utskrift;
+(* Skriver ut de 20 første harmoniske og deres amplituder *)
+var i:integer; first : real;
+begin
+    write(#12,'Harmonisk nr        Magnitude      /db/ ');
+    writeln(#10);
+    first := mag(main[2]);
+    for i := 1 to 20 do begin
+        magnitude := mag(main[i]);
+        writeln(i-1:11,magnitude:15:5,20*ln(magnitude/first)/ln10:10:1);
+    end;
+    thd := 0;
+    for i := 3 to 128 do thd := thd + sqr(mag(main[i]));
+    thd := sqrt(thd)/mag(main[2])*100;
+    writeln('THD = ',thd:8:6,' %');
+end;
+
+function log(x:real):real;
+begin
+    log := ln(x)/ln10;
+end;
+
+function hfe(I:real):real;
+(*                                                               *)
+(* Globale variable : Iturnover,Hfe_at_turnover,Imax,Hfemax,       *)
+(* a_factor,dI                                                    *)
+(* Rutinen gir verdien av HFE som funksjon av Ic                  *)
+(*                                                               *)
+begin
+    if I > Iturnover then hfe := Hfe_at_turnover-((abs(I)-Iturnover)*dI) { RECONSTRUCTED from visible text and parameter units }
+        else
+            if abs(I)>0 then
+                hfe := Hfemax/(1 + a_factor*(sqr(log(I/Imax))))
+            else hfe := Hfemax;
+
+
+{ ========================================================================== }
+{ Page 126                                                                  }
+{ ========================================================================== }
+
+end;
+
+function f(x:real):real;          (* Global variabel Iq *)
+(* Finner base-strømmen utfra utgangsstrømmen *)
+var I1,I2,ib1,ib2,limit : real;
+begin
+    limit := 2*Iq;
+    if x >= limit then begin I1:=x; I2:=0; end else
+    if x <= -limit then begin I2:=abs(x); I1:=0; end else
+                         begin I1:=x/2 + Iq; I2:=Iq - x/2; end;
+    ib1 := I1/hfe(I1);
+    ib2 := I2/hfe(I2)*offset;
+    f := ib1 - ib2;
+end;
+
+function g(x,z : real):real;
+(*                                                               *)
+(* Sum-funk. for alle spenningene i base-knutepunktet            *)
+(* Skal være 0 når alle størrelsene er korrekte                   *)
+(* 'x' er utgangsspenning, 'z' er generatorstrøm                  *)
+(* Benytter Globale variable Rg, Rl, antpar                       *)
+(*                                                               *)
+var ibias : real;
+begin
+    ibias := antpar*f(x/Rl/antpar);
+    g := (ibias - z)*Rg + x;
+end;
+
+procedure hfe_parm;
+(* Skriver ut verdier for hfe-kurven *)
+var a:real;
+
+procedure skriv(y:integer;val:streng;verdi:real);
+begin
+    gotoxy(1,y);
+    writeln('hfe ved ',val,' = ',verdi:5:1);
+end;
+
+begin
+
+
+{ ========================================================================== }
+{ Page 127                                                                  }
+{ ========================================================================== }
+
+    write('Oppgi Hfemax : '); readln(Hfemax);
+    write('Oppgi derate dI : '); readln(dI);
+    write('Oppgi a-faktor : '); readln(a_factor);
+    write('Oppgi Imax     : '); readln(Imax);
+    write('Oppgi Iturnover: '); readln(Iturnover);
+    write('Oppgi offset <1>: '); readln(offset);
+    Hfe_at_turnover := hfe(Iturnover);
+    (* dI:= -((Hfe_at_turnover - hfe(Iturnover*0.9))/(0.1*Iturnover)); *)
+    writeln('Derate dI = ',dI:4:1);
+    a := hfe(0.01); skriv(14,'0.01A ',a);
+    a := hfe(0.1);  skriv(15,'0.1 A ',a);
+    a := hfe(1);    skriv(16,'1   A ',a);
+    a := hfe(5);    skriv(17,'5   A ',a);
+    a := hfe(10);   skriv(18,'10  A ',a);
+    read(keyboard,svar);
+end;
+
+procedure hfe_tabell;
+var i:integer; IC:real;
+begin
+    write('Oppgi start verdi for strømmen : '); readln(IC);
+    write(#12);
+    for i:=1 to 20 do begin
+        writeln(IC:6:4,' A   :: Hfe = ',hfe(IC):8:0);
+        IC:=IC*1.4;
+    end;
+    read(keyboard,svar);
+end;
+
+procedure printing;
+var s : string[40];
+begin
+    s := '          ';
+    writeln(listing,#10,#10,#10);
+    writeln(listing,s,'Type transistor  : ',navn);
+
+
+{ ========================================================================== }
+{ Page 128                                                                  }
+{ ========================================================================== }
+
+    writeln(listing,s,'Gen. motstand     : ',Rg:10:1,' ohm');
+    writeln(listing,s,'Last-motstand     : ',Rl:10:1,' ohm');
+    writeln(listing,s,'Hvilestrøm/par    : ',Iq:10:1,' A');
+    writeln(listing,s,'Hfe max           : ',Hfemax:10:0);
+    writeln(listing,s,'ved I max         : ',Imax:10:2,' A');
+    writeln(listing,s,'a-factor          : ',a_factor:10:4);
+    writeln(listing,s,'dI                : ',dI:10:0,' 1/A');
+    writeln(listing,s,'Iturnover         : ',Iturnover:10:2,' A');
+    writeln(listing,s,'Offset            : ',offset:10:2);
+    writeln(listing,s,'Ant.tr. i par.    : ',antpar:10);
+    writeln(listing);
+    writeln(listing,s,'Grunntone         : ',grunntone:10:2,' V');
+    writeln(listing,s,'THD               : ',thd:10:4,' %');
+    writeln(listing,s,'2nd               : ',main[3].re:10:2,' dB');
+    writeln(listing,s,'3rd               : ',main[4].re:10:2,' dB');
+    writeln(listing,s,'4th               : ',main[5].re:10:2,' dB');
+    writeln(listing,s,'5th               : ',main[6].re:10:2,' dB');
+end;
+
+procedure set_up;
+var godtatt : set of [' '..'Z'];
+    a: char; i:integer; uut,iut,ib : real;
+begin
+    thd := 0;
+    godtatt := ['U','N','D','G','L','I','H','A','R','T','P'];
+    repeat
+        write(#12);
+        writeln('Gen.motst. Hfe-parm Tabell Last/hvile Input Avslutt ');
+        write('Navn RegnUt Display PlotUtskrift');
+        repeat
+            read(keyboard,a);
+            a:=upc(a);
+        until a in godtatt;
+        writeln;
+        case a of
+
+
+{ ========================================================================== }
+{ Page 129                                                                  }
+{ ========================================================================== }
+
+        'N' : begin
+                  write('Oppgi navn : ');
+                  readln(navn);
+              end;
+        'P' : graf(main,256);
+        'G' : begin
+                  write('Oppgi generatormotstand : ');
+                  readln(Rg);
+              end;
+        'L' : begin
+                  write('Oppgi lastmotstand : ');
+                  readln(Rl);
+                  write('Oppgi hvilestrøm/transistor-par : ');
+                  readln(Iq);
+                  write('Oppgi antall transistorer i parallell : ');
+                  readln(antpar);
+              end;
+        'I' : begin
+                  write('Oppgi peakverdi av utspenning : ');
+                  readln(uut);
+                  iut := uut/Rl;
+                  ib := antpar*f(iut/antpar);
+                  itopp := ib + uut/Rg;
+                  writeln('Itopp = ',itopp:10:8);
+                  for i := 1 to 256 do begin
+                      with main[i] do begin
+                          re := itopp*sin(i/128*pi);
+                          im := 0;
+                      end;
+                  end;
+                  read(keyboard,svar);
+              end;
+        'R' : begin
+                  write(#12);
+
+
+{ ========================================================================== }
+{ Page 130                                                                  }
+{ ========================================================================== }
+
+                  Traub(g,1E-6,main);
+                  fft(main,256);
+                  normalize;
+                  utskrift;
+                  grunntone := mag(main[2]);
+                  read(keyboard,svar);
+              end;
+        'H' : hfe_parm;
+        'U' : printing;
+        'T' : hfe_tabell;
+        'A' : begin
+                  clear_display;
+                  graphics_term;
+              end;
+        'D' : begin
+                  writeln(#12,'Gen. motstand     : ',Rg:10:1);
+                  writeln(    'Last-motstand     : ',Rl:10:1);
+                  writeln(    'Hvilestrøm        : ',Iq:10:1);
+                  writeln(    'Hfe max = ',Hfemax:6:0,' ved I max = ',Imax:6:2); { RIGHT EDGE MISSING IN PRINTOUT }
+                  writeln(    'a-factor          : ',a_factor:6:4);
+                  writeln(    'dI                : ',dI:6:2);
+                  writeln(    'Iturnover         : ',Iturnover:6:2);
+                  writeln(    'Offset            : ',offset:4:2);
+                  writeln(    'Ant. par          : ',antpar:6);
+                  writeln(    'THD               : ',thd:8:4);
+                  read(keyboard,svar);
+              end;
+        end;
+    until (a='a') or (a='A');
+end;
+
+begin
+    init_graf;
+    ln10 := ln(10);
+    antpar := 1;
+
+
+{ ========================================================================== }
+{ Continuation after page 130                                                }
+{ ========================================================================== }
+
+    set_up;
+end.

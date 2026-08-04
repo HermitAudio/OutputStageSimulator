@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ThesisProgram.ConsoleHarness/ThesisProgram.ConsoleHarness.csproj" />
+    <Project Path="src/ThesisProgram.Core/ThesisProgram.Core.csproj" />
+    <Project Path="src/ThesisProgram.Web/ThesisProgram.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ThesisProgram.Core.Tests/ThesisProgram.Core.Tests.csproj" />
+  </Folder>
+</Solution>
