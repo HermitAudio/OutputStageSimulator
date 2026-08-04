@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/OutputStageSimulator.ConsoleHarness/OutputStageSimulator.ConsoleHarness.csproj" />
+    <Project Path="src/OutputStageSimulator.Core/OutputStageSimulator.Core.csproj" />
+    <Project Path="src/OutputStageSimulator.Web/OutputStageSimulator.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/OutputStageSimulator.Core.Tests/OutputStageSimulator.Core.Tests.csproj" />
+  </Folder>
+</Solution>

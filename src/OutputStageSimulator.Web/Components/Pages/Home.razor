@@ -1,0 +1,235 @@
+@page "/"
+@rendermode InteractiveServer
+@using OutputStageSimulator.Core
+@using OutputStageSimulator.Web.State
+@inject IJSRuntime JS
+@inject SimulationState State
+@inject NavigationManager Nav
+
+<PageTitle>Output Stage Analysis</PageTitle>
+
+<div class="hero">
+    <h1>Output-Stage Nonlinearity Analysis</h1>
+    <p>
+        Simulates class A/AB/B push-pull output-stage distortion by solving the
+        nonlinear base-node equation per sample and running an FFT on the result.
+    </p>
+</div>
+
+<div class="card">
+    <div class="param-columns">
+        <div class="column">
+            <label class="plain-field">
+                <span>Title</span>
+                <input type="text" @bind="State.Title" @bind:after="OnFieldChanged" placeholder="Name this setup..." />
+            </label>
+            <fieldset class="accent-circuit">
+                <legend>Circuit</legend>
+                <label>Generator resistance Rg (ohm) <input type="number" step="any" @bind="State.Rg" @bind:after="OnFieldChanged" /></label>
+                <label>Load resistance Rl (ohm) <input type="number" step="any" @bind="State.Rl" @bind:after="OnFieldChanged" /></label>
+                <label>Quiescent current Iq (A) <input type="number" step="any" @bind="State.Iq" @bind:after="OnFieldChanged" /></label>
+                <label>Transistors in parallel <input type="number" @bind="State.AntPar" @bind:after="OnFieldChanged" /></label>
+                <label>Offset (pair mismatch) <input type="number" step="any" @bind="State.Offset" @bind:after="OnFieldChanged" /></label>
+            </fieldset>
+        </div>
+
+        <div class="column">
+            <label class="plain-field">
+                <span>Thesis preset</span>
+                <select @bind="State.SelectedPresetIndex" @bind:after="OnPresetChanged">
+                    <option value="-1">— Custom (manual entry) —</option>
+                    @for (var i = 0; i < ThesisPresets.All.Count; i++)
+                    {
+                        var preset = ThesisPresets.All[i];
+                        <option value="@i">@preset.Title (@preset.Description)</option>
+                    }
+                </select>
+            </label>
+            <fieldset class="accent-signal">
+                <legend>Test signal</legend>
+                <label>Peak output voltage (V) <input type="number" step="any" @bind="State.PeakOutputVoltage" @bind:after="OnFieldChanged" /></label>
+            </fieldset>
+        </div>
+
+        <div class="column">
+            <label class="plain-field">
+                <span>Transistor type</span>
+                <select @bind="State.SelectedTransistorIndex" @bind:after="OnTransistorChanged">
+                    @for (var i = 0; i < TransistorProfiles.All.Count; i++)
+                    {
+                        var t = TransistorProfiles.All[i];
+                        <option value="@i">@t.Name</option>
+                    }
+                </select>
+            </label>
+            <fieldset class="accent-hfe">
+                <legend>
+                    Transistor hfe model
+                    <button type="button" class="zoom-button zoom-button-sm" @onclick="GoToHfePage">🔍 Zoom</button>
+                </legend>
+                <label>Hfe max <input type="number" step="any" @bind="State.Hfemax" @bind:after="OnFieldChanged" /></label>
+                <label>I at Hfe max, Imax (A) <input type="number" step="any" @bind="State.Imax" @bind:after="OnFieldChanged" /></label>
+                <label>a-factor <input type="number" step="any" @bind="State.AFactor" @bind:after="OnFieldChanged" /></label>
+                <label>dI derating (1/A) <input type="number" step="any" @bind="State.DI" @bind:after="OnFieldChanged" /></label>
+                <label>Iturnover (A) <input type="number" step="any" @bind="State.Iturnover" @bind:after="OnFieldChanged" /></label>
+            </fieldset>
+        </div>
+
+        <div class="card hfe-chart-card-mini">
+            <div class="mini-chart-header">
+                <span>hFE vs Ic</span>
+                <button type="button" class="zoom-button" @onclick="GoToHfePage">🔍 Zoom</button>
+            </div>
+            <div class="mini-chart-wrap">
+                <canvas id="hfeChartMini"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="button-row">
+        <button class="run-button" @onclick="RunNow">@(State.AutoRecalculate ? "🔄 Recalculate now" : "▶ Run analysis")</button>
+        <label class="auto-toggle">
+            <input type="checkbox" @bind="State.AutoRecalculate" />
+            <span>Auto-recalculate</span>
+        </label>
+    </div>
+</div>
+
+@if (State.Error is not null)
+{
+    <p class="error">@State.Error</p>
+}
+
+@if (State.Result is not null)
+{
+    <div class="card results-card">
+        <h2>@State.Title</h2>
+        <div class="stat-row">
+            <div class="stat">
+                <span class="stat-label">Grunntone (fundamental)</span>
+                <span class="stat-value">@State.Result.Fundamental.ToString("F4") V</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">THD</span>
+                <span class="stat-value">@State.Result.Thd.ToString("F4") %</span>
+            </div>
+        </div>
+
+        <canvas id="spectrumChart" width="900" height="320"></canvas>
+
+        <table class="harmonics">
+            <thead>
+                <tr><th>Harmonic</th><th>Magnitude</th><th>dB</th><th>Phase (deg)</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var h in State.Result.Harmonics)
+                {
+                    <tr>
+                        <td>@h.HarmonicNumber</td>
+                        <td>@h.Magnitude.ToString("F5")</td>
+                        <td>@h.Db.ToString("F2")</td>
+                        <td>@h.PhaseDeg.ToString("F1")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <p class="hint">
+            Phase is relative to the sample grid used to build the test tone; it's most meaningful for
+            harmonics with real signal content — for bins near the noise floor it's effectively random.
+        </p>
+    </div>
+}
+
+@code {
+    private bool _needsSpectrumChartUpdate;
+    private bool _needsHfeChartUpdate = true;
+
+    protected override void OnInitialized()
+    {
+        _needsSpectrumChartUpdate = State.Result is not null;
+    }
+
+    private void OnPresetChanged()
+    {
+        State.LoadPreset(State.SelectedPresetIndex);
+        _needsSpectrumChartUpdate = true;
+        _needsHfeChartUpdate = true;
+    }
+
+    private void OnTransistorChanged()
+    {
+        State.OnTransistorTypeChanged(State.SelectedTransistorIndex);
+        _needsSpectrumChartUpdate = true;
+        _needsHfeChartUpdate = true;
+    }
+
+    private void OnFieldChanged()
+    {
+        State.OnFieldChanged();
+        _needsSpectrumChartUpdate = true;
+        _needsHfeChartUpdate = true;
+    }
+
+    private void RunNow()
+    {
+        State.Run();
+        _needsSpectrumChartUpdate = true;
+        _needsHfeChartUpdate = true;
+    }
+
+    private void GoToHfePage() => Nav.NavigateTo("/hfe-model");
+
+    private static IEnumerable<double> LogSpace(double from, double to, int count)
+    {
+        var logFrom = Math.Log10(from);
+        var logTo = Math.Log10(to);
+        for (var i = 0; i < count; i++)
+        {
+            var t = i / (double)(count - 1);
+            yield return Math.Pow(10, logFrom + t * (logTo - logFrom));
+        }
+    }
+
+    private sealed record XyPoint(double X, double Y);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Static prerendering has no live JS runtime; only the interactive
+        // render (after the circuit connects) can call JS.
+        if (!RendererInfo.IsInteractive)
+        {
+            return;
+        }
+
+        if (_needsSpectrumChartUpdate && State.Result is not null)
+        {
+            _needsSpectrumChartUpdate = false;
+            var labels = Enumerable.Range(0, State.Result.SpectrumDb.Count).ToArray();
+            await JS.InvokeVoidAsync("spectrumChart.render", "spectrumChart", labels, State.Result.SpectrumDb, State.Title);
+        }
+
+        if (_needsHfeChartUpdate)
+        {
+            _needsHfeChartUpdate = false;
+
+            var profile = TransistorProfiles.All[State.SelectedTransistorIndex];
+            var referenceCurve = profile.ReferenceHfeCurve
+                .Select(p => new XyPoint(p.Ic, p.Hfe))
+                .ToArray();
+
+            var hfeModel = State.CreateHfeModel();
+            var calculatedCurve = LogSpace(0.01, 10, 60)
+                .Select(ic => new XyPoint(ic, Math.Max(0, hfeModel.Hfe(ic))))
+                .ToArray();
+
+            await JS.InvokeVoidAsync(
+                "hfeChart.render",
+                "hfeChartMini",
+                referenceCurve,
+                calculatedCurve,
+                $"{profile.Name} (datasheet)",
+                "Calculated (this simulation)",
+                true);
+        }
+    }
+}
