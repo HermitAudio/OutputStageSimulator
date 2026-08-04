@@ -1,0 +1,67 @@
+name: OutputStageSimulator.CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: write
+
+env:
+  PROJECT_PATH: ./src/OutputStageSimulator.Web/OutputStageSimulator.Web.csproj
+  TESTPROJECT_PATH: ./tests/OutputStageSimulator.Core.Tests/OutputStageSimulator.Core.Tests.csproj
+  SLN: ./OutputStageSimulator.slnx
+  DOTNET_VERSION: '10.0.x'
+  CONFIGURATION: Debug
+
+jobs:
+  CIBuild:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: ⤵️ Checkout
+        uses: actions/checkout@v4
+
+      - name: 🛠️ Setup .NET (with NuGet cache)
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          cache: true
+          cache-dependency-path: |
+            **/Directory.Packages.props
+            **/*.csproj
+
+      - name: 📦Restore
+        run: dotnet restore ${{ env.SLN }}
+
+      - name: 🔨 Build
+        run: dotnet build ${{ env.SLN }} -c ${{ env.CONFIGURATION }} --no-restore
+
+      - name: 🧪 Test
+        run: dotnet test ${{ env.TESTPROJECT_PATH }} -c ${{ env.CONFIGURATION }} --no-build --logger "trx;LogFileName=test.trx" --results-directory ${{ github.workspace }}/TestResults --settings Coverlet.runsettings --collect:"XPlat Code Coverage"
+
+      - name: 🧪 Publish test results to Checks
+        if: ${{ always() }}
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: |
+            TestResults/**/*.trx
+          check_name: "Tests"
+
+      - name: 📈 Generate coverage report
+        if: ${{ always() }}
+        uses: HermitOS/testtag/.github/actions/SimpleCodeCoverage@v4
+        with:
+          coverage-file-pattern: 'TestResults/**/coverage.cobertura.xml'
+
+      - name: 💾 Upload coverage HTML
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: Coverage report
+          path: ${{ runner.temp }}/coveragereport

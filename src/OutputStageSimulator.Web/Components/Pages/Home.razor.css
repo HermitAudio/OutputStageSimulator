@@ -90,12 +90,6 @@
     padding: 0 0.3rem;
 }
 
-.column fieldset.accent-hfe legend {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
 .column label {
     display: flex;
     justify-content: space-between;
@@ -146,12 +140,6 @@
 
 .zoom-button:hover {
     background: #ea580c;
-}
-
-.zoom-button-sm {
-    font-size: 0.7rem;
-    padding: 0.15rem 0.5rem;
-    font-weight: 700;
 }
 
 /* Fills whatever height .param-columns' align-items:stretch leaves after

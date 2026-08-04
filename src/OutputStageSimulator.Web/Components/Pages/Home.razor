@@ -63,10 +63,7 @@
                 </select>
             </label>
             <fieldset class="accent-hfe">
-                <legend>
-                    Transistor hfe model
-                    <button type="button" class="zoom-button zoom-button-sm" @onclick="GoToHfePage">🔍 Zoom</button>
-                </legend>
+                <legend>Transistor hfe model</legend>
                 <label>Hfe max <input type="number" step="any" @bind="State.Hfemax" @bind:after="OnFieldChanged" /></label>
                 <label>I at Hfe max, Imax (A) <input type="number" step="any" @bind="State.Imax" @bind:after="OnFieldChanged" /></label>
                 <label>a-factor <input type="number" step="any" @bind="State.AFactor" @bind:after="OnFieldChanged" /></label>
