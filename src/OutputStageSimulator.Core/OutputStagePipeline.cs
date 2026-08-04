@@ -133,7 +133,7 @@ public sealed class OutputStagePipeline
         for (var i = 1; i <= 20; i++)
         {
             var magnitude = Complex.Abs(samples[i]);
-            var db = 20 * Math.Log(magnitude / fundamental) / Math.Log(10);
+            var db = 20 * Math.Log10(magnitude / fundamental);
             var phaseDeg = samples[i].Phase * (180.0 / Math.PI);
             harmonics.Add(new HarmonicEntry(i - 1, magnitude, db, phaseDeg));
         }
@@ -141,7 +141,7 @@ public sealed class OutputStagePipeline
         var thdAccumulator = 0.0;
         for (var i = 3; i <= FftProcessor.MaxElement / 2; i++)
         {
-            thdAccumulator += Sqr(Complex.Abs(samples[i]));
+            thdAccumulator += Complex.Abs(samples[i]).Sqr();
         }
 
         var thd = Math.Sqrt(thdAccumulator) / fundamental * 100;
@@ -150,7 +150,7 @@ public sealed class OutputStagePipeline
         var spectrumPhaseDeg = new double[FftProcessor.MaxElement / 2];
         for (var i = 1; i <= FftProcessor.MaxElement / 2; i++)
         {
-            spectrumDb[i - 1] = 20 * Math.Log(Complex.Abs(samples[i]) / fundamental) / Math.Log(10);
+            spectrumDb[i - 1] = 20 * Math.Log10(Complex.Abs(samples[i]) / fundamental);
             spectrumPhaseDeg[i - 1] = samples[i].Phase * (180.0 / Math.PI);
         }
 
@@ -171,6 +171,4 @@ public sealed class OutputStagePipeline
             samples[i] = new Complex(samples[i].Real / 128, samples[i].Imaginary / 128);
         }
     }
-
-    private static double Sqr(double x) => x * x;
 }

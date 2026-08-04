@@ -16,6 +16,10 @@ public static class FftProcessor
     // The thesis source declares `pi = 3.1415927` (7 significant digits) rather
     // than a full-precision constant; kept verbatim (and exposed, since the main
     // program imports and reuses this same constant) to reproduce exact numerics.
+    // Do not switch this to Math.PI: TraubSolver's convergence loop has no
+    // iteration cap, and the ~1e-8 precision difference is enough to push the
+    // stiff, high-Rg thesis presets (300000 ohm) into non-convergence, hanging
+    // the process. See the fragility this reveals — worth fixing independently.
     public const double Pi = 3.1415927;
 
     /// <summary>Bit-reverses <paramref name="x"/> using <paramref name="m"/> bits (Pascal: IBR).</summary>

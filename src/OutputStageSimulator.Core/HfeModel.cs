@@ -22,9 +22,6 @@ public sealed class HfeModel
 
     public void RecomputeTurnoverGain() => HfeAtTurnover = Hfe(Iturnover);
 
-    /// <summary>Pascal: function log(x) — base-10 logarithm via ln(x)/ln(10).</summary>
-    private static double Log10(double x) => Math.Log(x) / Math.Log(10);
-
     public double Hfe(double i)
     {
         if (i > Iturnover)
@@ -34,11 +31,9 @@ public sealed class HfeModel
 
         if (Math.Abs(i) > 0)
         {
-            return Hfemax / (1 + AFactor * Sqr(Log10(i / Imax)));
+            return Hfemax / (1 + AFactor * Math.Log10(i / Imax).Sqr());
         }
 
         return Hfemax;
     }
-
-    private static double Sqr(double x) => x * x;
 }
